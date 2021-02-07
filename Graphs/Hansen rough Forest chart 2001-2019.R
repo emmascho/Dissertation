@@ -8,12 +8,30 @@ hansen <-hansen_excel_2000_2019
 
 
 names(hansen)[1] <- "Year"
-names(hansen)[2] <- "Forest"
+names(hansen)[2] <- "Forest loss (ha)" #change to forest to make it work
 
 plot(hansen)
 
-(scatter <- ggplot(hansen, aes(x = Year, y = Forest, colour = "#1874CD")) +  # linking colour to a factor inside aes() ensures that the points' colour will vary according to the factor levels
-    theme_bw()                            # Changing the theme to get rid of the grey background
-    ylab("Forest loss (ha)") +                                                   # Changing the text of the y axis label
-    xlab("Year")  + 
-    geom_point())
+
+hansen <-hansen_excel_2000_2019
+names(hansen)[1] <- "Year"
+names(hansen)[2] <- "Forest_loss_(m2)" #change to forest to make it work
+names(hansen)[3]<-  "forest"
+
+hansen_clean <- na.omit(hansen)
+
+
+(scatter <- ggplot(hansen, aes(x = Year, y = forest)) +  
+    ylab("Forest loss (ha)\n") +                                                   # Changing the text of the y axis label
+    xlab("\nYear")+ 
+    theme_bw()+
+    theme(axis.text.x = element_text(size = 12, angle = 45, vjust = 1, hjust = 1),     # making the years at a bit of an angle
+            axis.text.y = element_text(size = 12),
+            axis.title = element_text(size = 14, face = "plain"),                        
+          plot.margin = unit(c(1,1,1,1), units = , "cm"))+
+    geom_point(color="#CD8500")+
+    scale_x_continuous(breaks=c(2001,2003,2005,2007,2009,2011,2013,2015,2017,2019),
+                       labels=c("2001","2003","2005","2007","2009","2011","2013","2015","2017","2019"),
+                       limit=c(2001,2019))
+)
+
