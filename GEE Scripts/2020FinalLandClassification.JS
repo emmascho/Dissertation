@@ -3,6 +3,13 @@
 //Assets were imported with land class polygons for training done in QGIS
 //Roi was also an asset
 
+// Load country boundaries from LSIB.
+var countries = ee.FeatureCollection('USDOS/LSIB_SIMPLE/2017');
+// Get a feature collection with just the Madagascar feature.
+var madagascar = countries.filter(ee.Filter.eq('country_na', 'Madagascar'));
+//This only gets land cover and masks water
+
+
 var year = '2020';
 var startDate = '2020-01-01';
 var endDate = '2020-07-28';
@@ -44,20 +51,24 @@ var collectionVVdes = ee.ImageCollection('COPERNICUS/S1_GRD')
 
  print(collectionVVdes);
 
-
+// Adding VV+VH polarisation to account for water and mangroves
 var s1VVmean = collectionVVdes.mean();
-
 
 var s1VVimage= ee.Image(s1VVmean);
 var s1VV = s1VVimage.clip(roi);
 //Map.addLayer(s1VV, {min: -20, max: -5} ,'VVdes');
 
+// VV std
+var s1VVstdCollection= collectionVVdes.reduce(ee.Reducer.stdDev());
+var s1VVstdimage= ee.Image(s1VVstdCollection);
+var s1VVstd= s1VVstdimage.clip(roi);
+Map.addLayer(s1VV, {min: -20, max: -5} ,'VVdes stdev');
 
 
 // Export the image to an Earth Engine asset.
 Export.image.toDrive({
-  image: s1VV,
-  description: 'means1VVdes',
+  image: s1VVstd,
+  description: 'stdevs1VVdes',
   scale: 30,
   region: roi,
   fileFormat: 'GeoTIFF',
@@ -80,8 +91,7 @@ var collectionVHdes = ee.ImageCollection('COPERNICUS/S1_GRD')
           return image.updateMask(maskedImage);
         });
 
-
-
+// Adding VV+VH polarisation to account for water and mangroves
 var s1VHmean = collectionVHdes.mean();
 
 
@@ -101,8 +111,26 @@ var s1VH = s1VHimage.clip(roi);
 //});
 
 
+// Standard Deviation  (Note:adding Stdev added +3% in validation accuracy)
+// VH std
+var s1VHstdCollection= collectionVHdes.reduce(ee.Reducer.stdDev());
+var s1VHstdimage= ee.Image(s1VHstdCollection);
+var s1VHstd= s1VHstdimage.clip(roi);
 
-// Standard Deviation, need to find code
+//Map.addLayer(s1VV, {min: -20, max: -5} ,'VHdes stdev');
+
+
+// Export the image to an Earth Engine asset.
+Export.image.toDrive({
+  image: s1VHstd,
+  description: 'stdevs1VHdes',
+  scale: 30,
+  region: roi,
+  fileFormat: 'GeoTIFF',
+  maxPixels: 1e13
+});
+
+
 
 
 ///// Adding Sentine-2 Data ////
@@ -133,11 +161,22 @@ Map.addLayer(cloudmask_composite.clip(roi), {bands: ['red', 'green', 'blue'], mi
 var s2final = ee.Image(cloudmask_composite);
 var s2ROI = s2final.clip(roi);
 
+////// Adding NDVI for degradation /////
+//improved validation accuracy by 2%//
+
+var red = s2ROI.select('red');
+var nir = s2ROI.select('nir');
+var ndvi = nir.subtract(red).divide(nir.add(red)).rename('NDVI');
+
+var ndviParams = {min: -1, max: 1, palette: ['blue', 'white', 'green']};
+//Map.addLayer(ndvi, ndviParams, 'NDVI', false);
+
+
 
 //// Merging all bands ////
 //Maybe change to s1 as base image?? Adding all bands gave more urban areas, less other forest and a tad less aqua
 
-var mergedCollection = s2ROI.addBands(slope).addBands(elevation).addBands(s1VH).addBands(s1VV);
+var mergedCollection = s2ROI.addBands(slope).addBands(elevation).addBands(s1VH).addBands(s1VV).addBands(s1VHstd).addBands(s1VVstd).addBands(ndvi);
 
 var bandNames = mergedCollection.bandNames();
 
@@ -146,14 +185,14 @@ print('Band names: ', bandNames); // ee.List of band names
 
 /// Classification image ////
 // Use these bands for classification.Not really used this only for masks
-var bands = ['aerosol','blue', 'green', 'red', 'red1','red2','red3','nir','red4','h2o','swir1', 'swir2','cirrus','VV','slope','elevation','VH'];
+var bands = ['aerosol','blue', 'green', 'red', 'red1','red2','red3','nir','red4','h2o','swir1', 'swir2','cirrus','VV','slope','elevation','VH','VH_stdDev','VV_stdDev','NDVI'];
 var finalBands = mergedCollection.select(bands);
 
 /////MASKING/////
 //ELevation Mask//
 
 var SRTMMask = finalBands.updateMask(elevationmask);
-Map.addLayer(SRTMMask, {},'SRTM Mask',false);
+//Map.addLayer(SRTMMask, {},'SRTM Mask',false);
 var finalImage= SRTMMask;
 
 
@@ -171,7 +210,7 @@ var mask = datamask.eq(1);
 
 // Update the composite mask with the water mask!!!
 var maskedComposite = finalImage.updateMask(mask);
-Map.addLayer(maskedComposite, vizParams, 'masked');
+//Map.addLayer(maskedComposite, vizParams, 'masked');
 
 
 // Make a water image out of the mask.
@@ -296,12 +335,12 @@ var classified = maskedComposite.classify(classifier,'classification');
 
 // Create a palette to display the classes
 var palette =['482173',//Mangrove (purple)
-              '#3d42ad',//Aquaculture(dark blue)
-              'EDECB9',//Agriculture(light yellow)
+              '4682b4',//Aquaculture(light navy blue)
+              '1eba90',//Agriculture(light green)
               'bddf26',//Urban (yellow)
-              'D7E9F3',//Water (light blue)
-              '808080',// Bare Ground(grey)
-              '29af7f',//Other Forest (green)
+              '170b63',//Water (dark blue)
+              'FFCB9C',//Bare Ground(light brown)
+              '077c66',//Other Forest (dark/forest green)
 ];
 
 // Display the classified map
@@ -309,18 +348,18 @@ Map.addLayer(classified, {min: 0, max: 6, palette: palette}, 'Classified');
 
 
 
-// Export the image to an Earth Engine asset.
-//Export.image.toAsset({
-//  image: classified,
-//  description: 'exporting-map-to-Assest',
-//  assetId: 'users/emschoenm/FirstAttempt2020',
-//  scale: 30,
-//  region: roi,
-//  pyramidingPolicy: {
-//    '.default': 'sample',
-//  },
-//  maxPixels: 1e13
-//});
+ Export the image to an Earth Engine asset.
+Export.image.toAsset({
+ image: classified,
+ description: 'exporting-map-to-Assest',
+ assetId: 'users/emschoenm/FirstAttempt2020',
+ scale: 30,
+ region: roi,
+pyramidingPolicy: {
+   '.default': 'sample',
+ },
+ maxPixels: 1e13
+ });
 
 
 //// Confusion Matrix & Accuracy //////
@@ -348,5 +387,5 @@ print ('Validation accuracy exported to "Tasks"');
 print('Validation error matrix: ', testAccuracy);
 print('Validation overall accuracy: ', testAccuracy.accuracy());
 // 0.757 overall validation accuracy with a 50%-50% split
-//0.817% with 70%-30% split 
+//0.869% with 70%-30% split 
 
