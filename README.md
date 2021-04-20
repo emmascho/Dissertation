@@ -1,6 +1,6 @@
-# DISSERTATION :madagascar:
+# DISSERTATION 
 
-***Title: Vulnerability assessment of Madagascar’s mangrove ecosystems to sea level rise, deforestation and degradation trends using satellite data***
+***Title: Vulnerability assessment of Madagascar’s mangrove ecosystems to sea level rise and deforestation trends using satellite data ***
 
 All the work completed for my dissertation in EES for partial fulfillment of the EES degree at the University of Edinburgh. For more information, please contact Emma Schoenmakers at s1754286@sms.ed.ac.uk.
 
