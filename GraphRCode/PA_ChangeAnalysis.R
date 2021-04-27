@@ -23,6 +23,7 @@ bubbleplot <- ggplot(change,aes(x=Park, y=Area, size = Area, color = Change)) +
 
 plot(bubbleplot)
 
+# Other visualisation using stacked barchart 
 
 barchart <- ggplot(change, aes(fill=Change, y=Area, x=Park)) + 
   geom_bar(position="stack", stat="identity")+
