@@ -1,7 +1,3 @@
-//2020 Classification Madagascar
-
-//Assets were imported with land class polygons for training done in QGIS
-//Roi was also an asset
 
 // Load country boundaries from LSIB.
 var countries = ee.FeatureCollection('USDOS/LSIB_SIMPLE/2017');
@@ -25,7 +21,6 @@ var slope = ee.Terrain.slope(elevation);
 //Masking areas above 35m with SRTM
 var elevationmask = elevation.select('elevation').lt(35);
 var elevationMask=elevationmask.clip(roi);
-
 
 
 
@@ -56,7 +51,7 @@ var s1VVmean = collectionVVdes.mean();
 
 var s1VVimage= ee.Image(s1VVmean);
 var s1VV = s1VVimage.clip(roi);
-//Map.addLayer(s1VV, {min: -20, max: -5} ,'VVdes');
+Map.addLayer(s1VV, {min: -20, max: -5} ,'VVdes');
 
 // VV std
 var s1VVstdCollection= collectionVVdes.reduce(ee.Reducer.stdDev());
@@ -74,6 +69,17 @@ Export.image.toDrive({
   fileFormat: 'GeoTIFF',
   maxPixels: 1e13
 });
+
+// Export the image to an Earth Engine asset.
+Export.image.toDrive({
+  image: s1VV,
+  description: 'means1VVdes',
+  scale: 30,
+  region: roi,
+  fileFormat: 'GeoTIFF',
+  maxPixels: 1e13
+});
+
 
 //// Adding Sentinel VH layer /////
 var collectionVHdes = ee.ImageCollection('COPERNICUS/S1_GRD')
@@ -98,17 +104,17 @@ var s1VHmean = collectionVHdes.mean();
 var s1VHimage= ee.Image(s1VHmean);
 var s1VH = s1VHimage.clip(roi);
 
-//Map.addLayer(s1VH, {min: -20, max: -5} ,'VHdes');
+Map.addLayer(s1VH, {min: -20, max: -5} ,'VHdes');
 
-// Export the image to an Earth Engine asset.
-//Export.image.toDrive({
-//  image: s1VH,
-//  description: 'means1VHdes',
-//  scale: 30,
-//  region: roi,
-//  fileFormat: 'GeoTIFF',
-//  maxPixels: 1e13
-//});
+ //Export the image to drive.
+Export.image.toDrive({
+image: s1VH,
+description: 'means1VHdes',
+ scale: 30,
+ region: roi,
+ fileFormat: 'GeoTIFF',
+ maxPixels: 1e13
+});
 
 
 // Standard Deviation  (Note:adding Stdev added +3% in validation accuracy)
@@ -117,10 +123,10 @@ var s1VHstdCollection= collectionVHdes.reduce(ee.Reducer.stdDev());
 var s1VHstdimage= ee.Image(s1VHstdCollection);
 var s1VHstd= s1VHstdimage.clip(roi);
 
-//Map.addLayer(s1VV, {min: -20, max: -5} ,'VHdes stdev');
+Map.addLayer(s1VV, {min: -20, max: -5} ,'VHdes stdev');
 
 
-// Export the image to an Earth Engine asset.
+// Export the image to drive.
 Export.image.toDrive({
   image: s1VHstd,
   description: 'stdevs1VHdes',
@@ -129,8 +135,6 @@ Export.image.toDrive({
   fileFormat: 'GeoTIFF',
   maxPixels: 1e13
 });
-
-
 
 
 ///// Adding Sentine-2 Data ////
@@ -161,6 +165,19 @@ Map.addLayer(cloudmask_composite.clip(roi), {bands: ['red', 'green', 'blue'], mi
 var s2final = ee.Image(cloudmask_composite);
 var s2ROI = s2final.clip(roi);
 
+
+
+// Export the image to drive.
+Export.image.toDrive({
+  image: s2ROI,
+  description: 'Sentinel 2 median composite',
+  scale: 30,
+  region: roi,
+  fileFormat: 'GeoTIFF',
+  maxPixels: 1e13
+});
+
+
 ////// Adding NDVI for degradation /////
 //improved validation accuracy by 2%//
 
@@ -169,7 +186,9 @@ var nir = s2ROI.select('nir');
 var ndvi = nir.subtract(red).divide(nir.add(red)).rename('NDVI');
 
 var ndviParams = {min: -1, max: 1, palette: ['blue', 'white', 'green']};
-//Map.addLayer(ndvi, ndviParams, 'NDVI', false);
+Map.addLayer(ndvi, ndviParams, 'NDVI', false);
+
+// Tried adding NDWI by Xu et al., 2006 as a water mask but resulted in a 3% decrease in accuracy///
 
 
 
@@ -192,7 +211,7 @@ var finalBands = mergedCollection.select(bands);
 //ELevation Mask//
 
 var SRTMMask = finalBands.updateMask(elevationmask);
-//Map.addLayer(SRTMMask, {},'SRTM Mask',false);
+Map.addLayer(SRTMMask, {},'SRTM Mask',false);
 var finalImage= SRTMMask;
 
 
@@ -210,7 +229,7 @@ var mask = datamask.eq(1);
 
 // Update the composite mask with the water mask!!!
 var maskedComposite = finalImage.updateMask(mask);
-//Map.addLayer(maskedComposite, vizParams, 'masked');
+Map.addLayer(maskedComposite, vizParams, 'masked');
 
 
 // Make a water image out of the mask.
@@ -255,20 +274,23 @@ var polygons = ee.FeatureCollection([
   ee.Feature(OtherForest)
 ]).flatten();
 
+
+
 // Compute the mean elevation in the polygon.
-var meanDict = elevation.reduceRegion({
-  reducer: ee.Reducer.mean(),
-  geometry: Mangrove,
+var medianDict = elevation.reduceRegion({
+  reducer: ee.Reducer.median(),
+  geometry: Aquaculture,
   scale: 30
 });
 
 // Other forest types found to be at ~113.7 m on average 
 // Mangroves found to be at ~13.8m
+// Aquaculture found to be at ~3.43m on average
 
 
 // Get the mean from the dictionary and print it.
-var mean = meanDict.get('elevation');
-print('Mean elevation', mean);
+var median = medianDict.get('elevation');
+print('median elevation', median);
 
 
 ///////// Random Pixel sampling approach //////////
@@ -347,20 +369,28 @@ var palette =['482173',//Mangrove (purple)
 Map.addLayer(classified, {min: 0, max: 6, palette: palette}, 'Classified');
 
 
-
- Export the image to an Earth Engine asset.
+ //Export the image to an Earth Engine asset.
 Export.image.toAsset({
- image: classified,
- description: 'exporting-map-to-Assest',
- assetId: 'users/emschoenm/FirstAttempt2020',
- scale: 30,
- region: roi,
-pyramidingPolicy: {
-   '.default': 'sample',
- },
- maxPixels: 1e13
- });
+  image: classified,
+  description: 'exporting-map-to-Assest',
+  assetId: 'users/emschoenm/2020Classification',
+  scale: 30,
+  region: roi,
+  pyramidingPolicy: {
+    '.default': 'sample',
+  },
+  maxPixels: 1e13
+});
 
+// Export the image to an Earth Engine asset.
+Export.image.toDrive({
+  image: classified,
+  description: 'exporting-2020-map-toDrive',
+  scale: 30,
+  region: roi,
+  fileFormat: 'GeoTIFF',
+  maxPixels: 1e13
+});
 
 //// Confusion Matrix & Accuracy //////
 
@@ -388,4 +418,55 @@ print('Validation error matrix: ', testAccuracy);
 print('Validation overall accuracy: ', testAccuracy.accuracy());
 // 0.757 overall validation accuracy with a 50%-50% split
 //0.869% with 70%-30% split 
+
+////// Change ANALYSIS //////
+
+
+// Create a legend
+var labels = ['Mangrove','Aquaculture', 'Agriculture', 'Urban', 'Water', 'Bare ground', 'Other Forest'];
+var add_legend = function(title, lbl, pal) {
+  var legend = ui.Panel({style: {position: 'bottom-left'}}), entry;
+  legend.add(ui.Label({value: title, style: { fontWeight: 'bold', fontSize: '18px', margin: '0 0 4px 0', padding: '0px' } }));
+  for (var x = 0; x < lbl.length; x++){
+    entry = [ ui.Label({style:{color: pal[x], border:'1px solid black', margin: '0 0 4px 0'}, value: '██'}),
+      ui.Label({ value: labels[x], style: { margin: '0 0 4px 4px' } }) ];
+    legend.add(ui.Panel(entry, ui.Panel.Layout.Flow('horizontal')));
+  } Map.add(legend); };
+  
+add_legend('Legend', labels, palette);
+
+
+
+
+////////// Calculate area by class//////////
+var names = ['0 mangrove', '1 aquaculture', '2 agriculture', '3 urban', '4 water','5 bare ground','6 other forest'];
+var count = classified.eq([0, 1, 2, 3, 4, 5, 6]).rename(names);
+var total = count.multiply(ee.Image.pixelArea());
+var area = total.reduceRegion(ee.Reducer.sum(),roi, 30,null,null,false,1e13);
+print('Area by class (m2)', area);
+//check that this measures all the classes and not just the area of the polygons 
+
+var exportAccuracy = ee.Feature(null, {matrix: testAccuracy.array()});
+var exportAccuracyNumber = ee.Feature(null, {matrix: testAccuracy.accuracy()});
+
+//exporting accuracy to drive table //
+Export.table.toDrive({
+  collection: ee.FeatureCollection(exportAccuracy),
+  description: 'AccuracyMatrix2020'+'_'+roi + year + '_'+ randomSeed,
+  fileFormat: 'CSV'
+});
+
+// create feature class
+var areaSize = ee.Feature(roi, area);
+
+//Area size unit is in m2
+
+// export data 
+Export.table.toDrive({
+  collection: ee.FeatureCollection([areaSize]),
+  description: 'area 2020',
+  fileFormat: 'CSV'
+});
+
+
 
