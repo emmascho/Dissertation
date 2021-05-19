@@ -1,6 +1,6 @@
-# DISSERTATION 
+# Dissertation
 
-***Title: Vulnerability assessment of Madagascar’s mangrove ecosystems to deforestation trends using satellite data***
+***Title: Mapping the vulnerability of Madagascar’s mangrove ecosystems to deforestation trends using satellite data***
 
 All the work completed for my dissertation in EES for partial fulfillment of the EES degree at the University of Edinburgh. For more information, please contact Emma Schoenmakers at s1754286@sms.ed.ac.uk.
 
@@ -11,4 +11,5 @@ All the work completed for my dissertation in EES for partial fulfillment of the
 ### Table of Contents
 
 - #### [Graphs](https://github.com/emmascho/Dissertation/tree/main/Graphs)
-- #### [Scripts](https://github.com/emmascho/Dissertation/tree/main/GEE%20Scripts)
+- #### [Google Earth Engine Scripts](https://github.com/emmascho/Dissertation/tree/main/GEE%20Scripts)
+- #### [R Scripts](https://github.com/emmascho/Dissertation/tree/main/GraphRCode)
