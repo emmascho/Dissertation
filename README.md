@@ -13,3 +13,4 @@ All the work completed for my dissertation in EES for partial fulfillment of the
 - #### [Graphs](https://github.com/emmascho/Dissertation/tree/main/Graphs)
 - #### [Google Earth Engine Scripts](https://github.com/emmascho/Dissertation/tree/main/GEE%20Scripts)
 - #### [R Scripts](https://github.com/emmascho/Dissertation/tree/main/GraphRCode)
+- #### [Dissertation Presentation](https://github.com/emmascho/Dissertation/tree/main/Presentation)
